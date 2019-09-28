@@ -16,20 +16,28 @@ void framebuffer_size_callback(GLFWwindow *window, int width, int height)
     glViewport(0, 0, width, height);
 }
 
-float speedx = 0, speedy = 0;
+float speedx[] = {0, 0}, speedy[] = {0, 0};
 
 void processInput(GLFWwindow *window)
 {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-        speedy += 0.00001;
+        speedy[0] += 0.00001;
     if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-        speedx -= 0.00001;
+        speedx[0] -= 0.00001;
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-        speedy -= 0.00001;
+        speedy[0] -= 0.00001;
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-        speedx += 0.00001;
+        speedx[0] += 0.00001;
+    if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
+        speedy[1] += 0.00001;
+    if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
+        speedx[1] -= 0.00001;
+    if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
+        speedy[1] -= 0.00001;
+    if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
+        speedx[1] += 0.00001;
 }
 
 int main()
@@ -105,17 +113,28 @@ int main()
     glDeleteShader(vertexShader);
     glDeleteShader(fragmentShader);
 
-    float vertices[] = {
-        // positions  // texture coords
+    float verticesLeft[] = {
+        // positions
         0.0f, 1.0f, 0.0f,   // top right
         0.0f, -1.0f, 0.0f,  // bottom right
         -1.0f, -1.0f, 0.0f, // bottom left
         -1.0f, 1.0f, 0.0f,  // top left
     };
-    unsigned int positionVBO;
-    glGenBuffers(1, &positionVBO);
-    glBindBuffer(GL_ARRAY_BUFFER, positionVBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+    float verticesRight[] = {
+        // positions
+        1.0f, 1.0f, 0.0f,  // top right
+        1.0f, -1.0f, 0.0f, // bottom right
+        0.0f, -1.0f, 0.0f, // bottom left
+        0.0f, 1.0f, 0.0f,  // top left
+    };
+    unsigned int leftVBO;
+    glGenBuffers(1, &leftVBO);
+    glBindBuffer(GL_ARRAY_BUFFER, leftVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(verticesLeft), verticesLeft, GL_STATIC_DRAW);
+    unsigned int rightVBO;
+    glGenBuffers(1, &rightVBO);
+    glBindBuffer(GL_ARRAY_BUFFER, rightVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(verticesRight), verticesRight, GL_STATIC_DRAW);
 
     unsigned int indices[] = {
         // note that we start from 0!
@@ -127,36 +146,42 @@ int main()
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
-    for (auto &image : images)
+    for (int i = 0; i < 2; i++)
     {
-        glGenVertexArrays(1, &image.VAO);
-        glBindVertexArray(image.VAO);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+        for (auto &image : images)
+        {
+            glGenVertexArrays(1, &image.VAOs[i]);
+            glBindVertexArray(image.VAOs[i]);
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
 
-        // position attribute
-        glBindBuffer(GL_ARRAY_BUFFER, positionVBO);
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *)0);
-        glEnableVertexAttribArray(0);
+            // position attribute
+            glBindBuffer(GL_ARRAY_BUFFER, i == 0 ? leftVBO : rightVBO);
+            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *)0);
+            glEnableVertexAttribArray(0);
 
-        // texture attribute
-        unsigned int textureVBO;
-        glGenBuffers(1, &textureVBO);
-        glBindBuffer(GL_ARRAY_BUFFER, textureVBO);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(image.maping), image.maping, GL_STATIC_DRAW);
-        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void *)0);
-        glEnableVertexAttribArray(1);
+            // texture attribute
+            unsigned int textureVBO;
+            glGenBuffers(1, &textureVBO);
+            glBindBuffer(GL_ARRAY_BUFFER, textureVBO);
+            glBufferData(GL_ARRAY_BUFFER, sizeof(image.maping), image.maping, GL_STATIC_DRAW);
+            glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void *)0);
+            glEnableVertexAttribArray(1);
+        }
     }
 
-    float positionx = 0, positiony = 0;
+    float positionx[] = {0, 0}, positiony[] = {0, 0};
     while (!glfwWindowShouldClose(window))
     {
         processInput(window);
-        positionx += speedx;
-        positiony += speedy;
-        if (positiony < 0)
+        for (int i = 0; i < 2; i++)
         {
-            positiony = 0;
-            speedy = 0;
+            positionx[i] += speedx[i];
+            positiony[i] += speedy[i];
+            if (positiony[i] < 0)
+            {
+                positiony[i] = 0;
+                speedy[i] = 0;
+            }
         }
 
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
@@ -164,12 +189,15 @@ int main()
 
         for (parallaxImage image : images)
         {
-            glBindVertexArray(image.VAO);
-            glBindTexture(GL_TEXTURE_2D, image.textureId);
+            for (int i = 0; i < 2; i++)
+            {
+                glBindVertexArray(image.VAOs[i]);
+                glBindTexture(GL_TEXTURE_2D, image.textureId);
 
-            glUniform1f(glGetUniformLocation(shaderProgram, "offsetx"), positionx * image.parallaxRatex / image.stretch);
-            glUniform1f(glGetUniformLocation(shaderProgram, "offsety"), positiony * image.parallaxRatey / image.stretch);
-            glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+                glUniform1f(glGetUniformLocation(shaderProgram, "offsetx"), positionx[i] * image.parallaxRatex / image.stretch);
+                glUniform1f(glGetUniformLocation(shaderProgram, "offsety"), positiony[i] * image.parallaxRatey / image.stretch);
+                glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+            }
         }
 
         glfwSwapBuffers(window);

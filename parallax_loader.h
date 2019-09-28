@@ -8,7 +8,7 @@ typedef struct
     float parallaxRatex;
     float parallaxRatey;
     float stretch;
-    unsigned int VAO;
+    unsigned int VAOs[];
 
     //attributes overwritten by LoadImages function
 
