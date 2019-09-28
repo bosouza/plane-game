@@ -1,4 +1,5 @@
 #include <bits/stdc++.h>
+#include <math.h>
 #define GLEW_STATIC
 #include "GL/glew.h"
 #include "GLFW/glfw3.h"
@@ -16,28 +17,20 @@ void framebuffer_size_callback(GLFWwindow *window, int width, int height)
     glViewport(0, 0, width, height);
 }
 
-float speedx[] = {0, 0}, speedy[] = {0, 0};
+float speedAngle[] = {0, 3.1415f};
 
 void processInput(GLFWwindow *window)
 {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
-    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-        speedy[0] += 0.00001;
     if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-        speedx[0] -= 0.00001;
+        speedAngle[0] += 0.01;
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-        speedy[0] -= 0.00001;
-    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-        speedx[0] += 0.00001;
-    if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
-        speedy[1] += 0.00001;
-    if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
-        speedx[1] -= 0.00001;
-    if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
-        speedy[1] -= 0.00001;
-    if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
-        speedx[1] += 0.00001;
+        speedAngle[0] -= 0.01;
+    if (glfwGetKey(window, GLFW_KEY_K) == GLFW_PRESS)
+        speedAngle[1] += 0.01;
+    if (glfwGetKey(window, GLFW_KEY_L) == GLFW_PRESS)
+        speedAngle[1] -= 0.01;
 }
 
 int main()
@@ -169,18 +162,18 @@ int main()
         }
     }
 
+    float speed[] = {0.002, 0.002};
     float positionx[] = {0, 0}, positiony[] = {0, 0};
     while (!glfwWindowShouldClose(window))
     {
         processInput(window);
         for (int i = 0; i < 2; i++)
         {
-            positionx[i] += speedx[i];
-            positiony[i] += speedy[i];
+            positionx[i] += speed[i] * cos(speedAngle[i]);
+            positiony[i] += speed[i] * sin(speedAngle[i]);
             if (positiony[i] < 0)
             {
                 positiony[i] = 0;
-                speedy[i] = 0;
             }
         }
 
