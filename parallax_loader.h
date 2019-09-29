@@ -21,4 +21,18 @@ typedef struct
 
 bool LoadImages(parallaxImage images[], unsigned int size);
 
+class sprite
+{
+private:
+    unsigned int textureID;
+    unsigned int wQtd;
+    unsigned int hQtd;
+
+public:
+    sprite(std::string path, unsigned int wQtd, unsigned int hQtd);
+    ~sprite() {}
+    void BindAction(unsigned int action, int offsetx, int offsety);
+    void FillTextureBuffer(float buffer[]);
+};
+
 #endif
