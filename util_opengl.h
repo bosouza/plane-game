@@ -7,5 +7,5 @@
 
 unsigned int CreateShader(unsigned int type, const char *path);
 std::string testCompileProgram(unsigned int program);
-
+void fillRectangleBuffer(float width, float height, float buffer[]);
 #endif

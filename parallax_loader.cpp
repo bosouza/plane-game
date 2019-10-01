@@ -106,7 +106,6 @@ sprite::sprite(std::string path, unsigned int wQtd, unsigned int hQtd)
 void sprite::BindAction(unsigned int action, int offsetx, int offsety)
 {
     glBindTexture(GL_TEXTURE_2D, textureID);
-    std::cout << "action: " << action << " offsetx: " << (float)(action % wQtd) / (float)wQtd << " offsety: " << ((float)hQtd - 1.0f - (float)(action / wQtd)) / (float)hQtd << std::endl;
     glUniform1f(offsetx, (float)(action % wQtd) / (float)wQtd);
     glUniform1f(offsety, ((float)hQtd - 1.0f - (float)(action / wQtd)) / (float)hQtd);
 }

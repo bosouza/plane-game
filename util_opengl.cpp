@@ -65,3 +65,13 @@ unsigned int CreateShader(unsigned int type, const char *path)
     std::cout << testCompileShader(shaderID);
     return shaderID;
 }
+
+void fillRectangleBuffer(float width, float height, float buffer[])
+{
+    float bufferi[] = {width / 2.0f, height / 2.0f, 0.0f,
+                       width / 2.0f, -height / 2.0f, 0.0f,
+                       -width / 2.0f, -height / 2.0f, 0.0f,
+                       -width / 2.0f, height / 2.0f, 0.0f};
+    for (int i = 0; i < 12; i++)
+        buffer[i] = bufferi[i];
+}

@@ -129,52 +129,20 @@ int main()
     glDeleteShader(vertexShader);
     glDeleteShader(fragmentShader);
 
-    float verticesLeft[] = {
-        // positions
-        0.0f, 1.0f, 0.0f,   // top right
-        0.0f, -1.0f, 0.0f,  // bottom right
-        -1.0f, -1.0f, 0.0f, // bottom left
-        -1.0f, 1.0f, 0.0f,  // top left
-    };
-    float verticesRight[] = {
-        // positions
-        1.0f, 1.0f, 0.0f,  // top right
-        1.0f, -1.0f, 0.0f, // bottom right
-        0.0f, -1.0f, 0.0f, // bottom left
-        0.0f, 1.0f, 0.0f,  // top left
-    };
-    float leftPlane[] = {
-        // positions
-        -0.4f, -0.3f, 0.0f, // top right
-        -0.4f, -0.6f, 0.0f, // bottom right
-        -0.6f, -0.6f, 0.0f, // bottom left
-        -0.6f, -0.3f, 0.0f, // top left
-    };
-    float rightPlane[] = {
-        // positions
-        0.6f, -0.3f, 0.0f, // top right
-        0.6f, -0.6f, 0.0f, // bottom right
-        0.4f, -0.6f, 0.0f, // bottom left
-        0.4f, -0.3f, 0.0f, // top left
-    };
+    float backgroundBuffer[12];
+    fillRectangleBuffer(1, 2, backgroundBuffer);
+    float planeBuffer[12];
+    fillRectangleBuffer(0.2f, 0.2f, planeBuffer);
 
-    unsigned int leftVBO;
-    glGenBuffers(1, &leftVBO);
-    glBindBuffer(GL_ARRAY_BUFFER, leftVBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(verticesLeft), verticesLeft, GL_STATIC_DRAW);
-    unsigned int rightVBO;
-    glGenBuffers(1, &rightVBO);
-    glBindBuffer(GL_ARRAY_BUFFER, rightVBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(verticesRight), verticesRight, GL_STATIC_DRAW);
+    unsigned int backgroundVBO;
+    glGenBuffers(1, &backgroundVBO);
+    glBindBuffer(GL_ARRAY_BUFFER, backgroundVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(backgroundBuffer), backgroundBuffer, GL_STATIC_DRAW);
 
-    unsigned int leftPlaneVBO;
-    glGenBuffers(1, &leftPlaneVBO);
-    glBindBuffer(GL_ARRAY_BUFFER, leftPlaneVBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(leftPlane), leftPlane, GL_STATIC_DRAW);
-    unsigned int rightPlaneVBO;
-    glGenBuffers(1, &rightPlaneVBO);
-    glBindBuffer(GL_ARRAY_BUFFER, rightPlaneVBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(rightPlane), rightPlane, GL_STATIC_DRAW);
+    unsigned int planeVBO;
+    glGenBuffers(1, &planeVBO);
+    glBindBuffer(GL_ARRAY_BUFFER, planeVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(planeBuffer), planeBuffer, GL_STATIC_DRAW);
 
     unsigned int indices[] = {
         // note that we start from 0!
@@ -186,42 +154,14 @@ int main()
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
-    for (int i = 0; i < 2; i++)
+    for (auto &image : images)
     {
-        for (auto &image : images)
-        {
-            glGenVertexArrays(1, &image.VAOs[i]);
-            glBindVertexArray(image.VAOs[i]);
-            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-
-            // position attribute
-            glBindBuffer(GL_ARRAY_BUFFER, i == 0 ? leftVBO : rightVBO);
-            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *)0);
-            glEnableVertexAttribArray(0);
-
-            // texture attribute
-            unsigned int textureVBO;
-            glGenBuffers(1, &textureVBO);
-            glBindBuffer(GL_ARRAY_BUFFER, textureVBO);
-            glBufferData(GL_ARRAY_BUFFER, sizeof(image.maping), image.maping, GL_STATIC_DRAW);
-            glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void *)0);
-            glEnableVertexAttribArray(1);
-        }
-    }
-
-    sprite redPlaneSprite("./textures/red-plane-sprite.png", 5, 5);
-
-    float buffer[8];
-    redPlaneSprite.FillTextureBuffer(buffer);
-    unsigned int planeVAOs[2];
-    for (int i = 0; i < 2; i++)
-    {
-        glGenVertexArrays(1, &planeVAOs[i]);
-        glBindVertexArray(planeVAOs[i]);
+        glGenVertexArrays(1, &image.VAO);
+        glBindVertexArray(image.VAO);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
 
         // position attribute
-        glBindBuffer(GL_ARRAY_BUFFER, i == 0 ? leftPlaneVBO : rightPlaneVBO);
+        glBindBuffer(GL_ARRAY_BUFFER, backgroundVBO);
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *)0);
         glEnableVertexAttribArray(0);
 
@@ -229,10 +169,32 @@ int main()
         unsigned int textureVBO;
         glGenBuffers(1, &textureVBO);
         glBindBuffer(GL_ARRAY_BUFFER, textureVBO);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(buffer), buffer, GL_STATIC_DRAW);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(image.maping), image.maping, GL_STATIC_DRAW);
         glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void *)0);
         glEnableVertexAttribArray(1);
     }
+
+    sprite redPlaneSprite("./textures/red-plane-sprite.png", 5, 5);
+
+    unsigned int planeVAO;
+    glGenVertexArrays(1, &planeVAO);
+    glBindVertexArray(planeVAO);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+
+    // position attribute
+    glBindBuffer(GL_ARRAY_BUFFER, planeVBO);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *)0);
+    glEnableVertexAttribArray(0);
+
+    // texture attribute
+    float buffer[8];
+    redPlaneSprite.FillTextureBuffer(buffer);
+    unsigned int textureVBO;
+    glGenBuffers(1, &textureVBO);
+    glBindBuffer(GL_ARRAY_BUFFER, textureVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(buffer), buffer, GL_STATIC_DRAW);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void *)0);
+    glEnableVertexAttribArray(1);
 
     float speed[] = {0.002, 0.002};
     float positionx[] = {0, 0}, positiony[] = {0, 0};
@@ -262,9 +224,11 @@ int main()
             {
                 for (int i = 0; i < 2; i++)
                 {
-                    glBindVertexArray(image.VAOs[i]);
+                    glBindVertexArray(image.VAO);
                     glBindTexture(GL_TEXTURE_2D, image.textureId);
 
+                    glUniform1f(glGetUniformLocation(shaderProgram, "positionx"), i == 0 ? -0.5f : 0.5f);
+                    glUniform1f(glGetUniformLocation(shaderProgram, "positiony"), 0.0f);
                     glUniform1f(glGetUniformLocation(shaderProgram, "offsetx"), positionx[i] * image.parallaxRatex / image.stretch);
                     glUniform1f(glGetUniformLocation(shaderProgram, "offsety"), positiony[i] * image.parallaxRatey / image.stretch);
                     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
@@ -272,7 +236,9 @@ int main()
             }
             for (int i = 0; i < 2; i++)
             {
-                glBindVertexArray(planeVAOs[i]);
+                glBindVertexArray(planeVAO);
+                glUniform1f(glGetUniformLocation(shaderProgram, "positionx"), i == 0 ? -0.5f : 0.5f);
+                glUniform1f(glGetUniformLocation(shaderProgram, "positiony"), -0.5f);
                 redPlaneSprite.BindAction(action, glGetUniformLocation(shaderProgram, "offsetx"), glGetUniformLocation(shaderProgram, "offsety"));
                 glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
             }
