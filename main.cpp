@@ -9,6 +9,7 @@
 #define FPS_MIN 0.01f
 
 #include <util_opengl.h>
+#include <button_util.h>
 
 using namespace std;
 
@@ -19,8 +20,7 @@ void framebuffer_size_callback(GLFWwindow *window, int width, int height)
 
 float speedAngle[] = {0, 3.1415f};
 int action = 0;
-bool actionUp = false;
-bool actionDown = false;
+press_event buttons[2];
 
 void processInput(GLFWwindow *window)
 {
@@ -34,26 +34,12 @@ void processInput(GLFWwindow *window)
         speedAngle[1] += 0.01;
     if (glfwGetKey(window, GLFW_KEY_L) == GLFW_PRESS)
         speedAngle[1] -= 0.01;
-    if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)
-    {
-        if (!actionUp)
-        {
-            actionUp = true;
-            action++;
-        }
-    }
-    else
-        actionUp = false;
-    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-    {
-        if (!actionDown)
-        {
-            actionDown = true;
-            action--;
-        }
-    }
-    else
-        actionDown = false;
+    buttons[0].setState(glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS);
+    buttons[1].setState(glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS);
+    if (buttons[0].pressEvent())
+        action = (action + 1) % 25;
+    if (buttons[1].pressEvent())
+        action = (action + 24) % 25;
 }
 
 int main()
