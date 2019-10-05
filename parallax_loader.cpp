@@ -67,10 +67,12 @@ bool LoadImages(parallaxImage images[], unsigned int size)
     return true;
 }
 
-sprite::sprite(std::string path, unsigned int wQtd, unsigned int hQtd)
+sprite::sprite(std::string path, unsigned int wQtd, unsigned int hQtd, int offsetxLocation, int offsetyLocation)
 {
     this->wQtd = wQtd;
     this->hQtd = hQtd;
+    this->offsetxLocation = offsetxLocation;
+    this->offsetyLocation = offsetyLocation;
     stbi_set_flip_vertically_on_load(true);
     glGenTextures(1, &textureID);
     glBindTexture(GL_TEXTURE_2D, textureID);
@@ -103,11 +105,11 @@ sprite::sprite(std::string path, unsigned int wQtd, unsigned int hQtd)
     glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
 }
 
-void sprite::BindAction(unsigned int action, int offsetx, int offsety)
+void sprite::BindAction(unsigned int action)
 {
     glBindTexture(GL_TEXTURE_2D, textureID);
-    glUniform1f(offsetx, (float)(action % wQtd) / (float)wQtd);
-    glUniform1f(offsety, ((float)hQtd - 1.0f - (float)(action / wQtd)) / (float)hQtd);
+    glUniform1f(this->offsetxLocation, (float)(action % wQtd) / (float)wQtd);
+    glUniform1f(this->offsetyLocation, ((float)hQtd - 1.0f - (float)(action / wQtd)) / (float)hQtd);
 }
 
 void sprite::FillTextureBuffer(float buffer[])

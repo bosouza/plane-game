@@ -1,45 +1,26 @@
 #include <bits/stdc++.h>
-#include <math.h>
 #define GLEW_STATIC
 #include "GL/glew.h"
 #include "GLFW/glfw3.h"
-#include "parallax_loader.h"
 #define LENGTH 1000
 #define HEIGHT 500
-#define FPS_MIN 0.01f
+#define NUMBER_OF_PLANES 2
+#define ANGULAR_VELOCITY 1
 
 #include <util_opengl.h>
 #include <button_util.h>
+#include <parallax_loader.h>
+#include <game_entity.h>
+#include <timer.h>
 
 using namespace std;
 
+unsigned int mod(int a, int b);
+unsigned int actionFromAngle(float angle);
+void processInput(GLFWwindow *window, game_entity planes[]);
 void framebuffer_size_callback(GLFWwindow *window, int width, int height)
 {
     glViewport(0, 0, width, height);
-}
-
-float speedAngle[] = {0, 3.1415f};
-int action = 0;
-press_event buttons[2];
-
-void processInput(GLFWwindow *window)
-{
-    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-        glfwSetWindowShouldClose(window, true);
-    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-        speedAngle[0] += 0.01;
-    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-        speedAngle[0] -= 0.01;
-    if (glfwGetKey(window, GLFW_KEY_K) == GLFW_PRESS)
-        speedAngle[1] += 0.01;
-    if (glfwGetKey(window, GLFW_KEY_L) == GLFW_PRESS)
-        speedAngle[1] -= 0.01;
-    buttons[0].setState(glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS);
-    buttons[1].setState(glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS);
-    if (buttons[0].pressEvent())
-        action = (action + 1) % 25;
-    if (buttons[1].pressEvent())
-        action = (action + 24) % 25;
 }
 
 int main()
@@ -114,11 +95,15 @@ int main()
     glUseProgram(shaderProgram);
     glDeleteShader(vertexShader);
     glDeleteShader(fragmentShader);
+    int positionxLocation = glGetUniformLocation(shaderProgram, "positionx");
+    int positionyLocation = glGetUniformLocation(shaderProgram, "positiony");
+    int offsetxLocation = glGetUniformLocation(shaderProgram, "offsetx");
+    int offsetyLocation = glGetUniformLocation(shaderProgram, "offsety");
 
     float backgroundBuffer[12];
     fillRectangleBuffer(1, 2, backgroundBuffer);
     float planeBuffer[12];
-    fillRectangleBuffer(0.2f, 0.2f, planeBuffer);
+    fillRectangleBuffer(0.15f, 0.2f, planeBuffer);
 
     unsigned int backgroundVBO;
     glGenBuffers(1, &backgroundVBO);
@@ -160,7 +145,9 @@ int main()
         glEnableVertexAttribArray(1);
     }
 
-    sprite redPlaneSprite("./textures/red-plane-sprite.png", 5, 5);
+    sprite redPlaneSprite("./textures/red-plane-sprite.png", 5, 5,
+                          glGetUniformLocation(shaderProgram, "offsetx"),
+                          glGetUniformLocation(shaderProgram, "offsety"));
 
     unsigned int planeVAO;
     glGenVertexArrays(1, &planeVAO);
@@ -183,56 +170,77 @@ int main()
     glEnableVertexAttribArray(1);
 
     float speed[] = {0.002, 0.002};
-    float positionx[] = {0, 0}, positiony[] = {0, 0};
-    double previousSeconds = glfwGetTime();
+    game_entity planes[] = {game_entity(0, 0, 0.5, 0, 0), game_entity(1, 0, 0.5, 0, 0)};
+    pair<float, float> screenCenter[] = {{-0.5f, -0.5f}, {0.5f, -0.5f}};
+    timer t;
     while (!glfwWindowShouldClose(window))
     {
-        double currentSeconds = glfwGetTime();
-        double elapsedSeconds = currentSeconds - previousSeconds;
-        if (elapsedSeconds >= FPS_MIN)
+        t.update();
+        processInput(window, planes);
+        for (int i = 0; i < NUMBER_OF_PLANES; i++)
+            planes[i].step(t.getElapsedTime());
+
+        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT);
+
+        for (parallaxImage image : images)
         {
-            previousSeconds = currentSeconds;
-            processInput(window);
-            for (int i = 0; i < 2; i++)
+            for (int i = 0; i < NUMBER_OF_PLANES; i++)
             {
-                positionx[i] += speed[i] * cos(speedAngle[i]);
-                positiony[i] += speed[i] * sin(speedAngle[i]);
-                if (positiony[i] < 0)
-                {
-                    positiony[i] = 0;
-                }
-            }
+                glBindVertexArray(image.VAO);
+                glBindTexture(GL_TEXTURE_2D, image.textureId);
 
-            glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-            glClear(GL_COLOR_BUFFER_BIT);
-
-            for (parallaxImage image : images)
-            {
-                for (int i = 0; i < 2; i++)
-                {
-                    glBindVertexArray(image.VAO);
-                    glBindTexture(GL_TEXTURE_2D, image.textureId);
-
-                    glUniform1f(glGetUniformLocation(shaderProgram, "positionx"), i == 0 ? -0.5f : 0.5f);
-                    glUniform1f(glGetUniformLocation(shaderProgram, "positiony"), 0.0f);
-                    glUniform1f(glGetUniformLocation(shaderProgram, "offsetx"), positionx[i] * image.parallaxRatex / image.stretch);
-                    glUniform1f(glGetUniformLocation(shaderProgram, "offsety"), positiony[i] * image.parallaxRatey / image.stretch);
-                    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-                }
-            }
-            for (int i = 0; i < 2; i++)
-            {
-                glBindVertexArray(planeVAO);
-                glUniform1f(glGetUniformLocation(shaderProgram, "positionx"), i == 0 ? -0.5f : 0.5f);
-                glUniform1f(glGetUniformLocation(shaderProgram, "positiony"), -0.5f);
-                redPlaneSprite.BindAction(action, glGetUniformLocation(shaderProgram, "offsetx"), glGetUniformLocation(shaderProgram, "offsety"));
+                glUniform1f(positionxLocation, screenCenter[i].first);
+                glUniform1f(positionyLocation, 0.0f);
+                glUniform1f(offsetxLocation, planes[i].position.x * image.parallaxRatex / image.stretch);
+                glUniform1f(offsetyLocation, planes[i].position.y * image.parallaxRatey / image.stretch);
                 glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
             }
-            glfwSwapBuffers(window);
-            glfwPollEvents();
         }
+
+        glBindVertexArray(planeVAO);
+        for (int i = 0; i < NUMBER_OF_PLANES; i++)
+        {
+            // for (int j = 0; j < NUMBER_OF_PLANES; j++)
+            // {
+            glUniform1f(positionxLocation, screenCenter[i].first);
+            glUniform1f(positionyLocation, screenCenter[i].second);
+            redPlaneSprite.BindAction(actionFromAngle(planes[i].angle));
+            glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+            // }
+        }
+        glfwSwapBuffers(window);
+        glfwPollEvents();
     }
 
     glfwTerminate();
     return 0;
+}
+
+void processInput(GLFWwindow *window, game_entity planes[])
+{
+    planes[0].angularVelocity = 0;
+    planes[1].angularVelocity = 0;
+    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+        glfwSetWindowShouldClose(window, true);
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+        planes[0].angularVelocity = -ANGULAR_VELOCITY;
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+        planes[0].angularVelocity = ANGULAR_VELOCITY;
+    if (glfwGetKey(window, GLFW_KEY_K) == GLFW_PRESS)
+        planes[1].angularVelocity = -ANGULAR_VELOCITY;
+    if (glfwGetKey(window, GLFW_KEY_L) == GLFW_PRESS)
+        planes[1].angularVelocity = ANGULAR_VELOCITY;
+}
+
+unsigned int actionFromAngle(float angle)
+{
+    //red plane actions should go from 0 to 24 as the planes turns from 0 to 2*PI radians
+    unsigned int result = mod((int)floor((angle / (3.1415f * 2)) * 24), 24);
+    return result == 25 ? 0 : result;
+}
+
+unsigned int mod(int a, int b)
+{
+    return (b + (a % b)) % b;
 }

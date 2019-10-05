@@ -1,4 +1,8 @@
 #include <util_opengl.h>
+#include <bits/stdc++.h>
+#define GLEW_STATIC
+#include "GL/glew.h"
+#include "GLFW/glfw3.h"
 
 std::string readFile(const char *filePath)
 {
