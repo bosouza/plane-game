@@ -57,7 +57,7 @@ void parallax_image::bind()
 void parallax_image::fillTextureBuffer(float buffer[], int screenWidth, int screenHeight)
 {
     float pWidth, pHeight;
-    if (screenWidth / screenHeight > pWidth / pHeight)
+    if (screenWidth / screenHeight > this->width / this->height)
     {
         pWidth = 1.0f / this->stretch;
         pHeight = ((float)screenHeight / screenWidth) * ((float)this->width / this->height) / this->stretch;

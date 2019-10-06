@@ -2,7 +2,7 @@
 #define GLEW_STATIC
 #include "GL/glew.h"
 #include "GLFW/glfw3.h"
-#define LENGTH 1000
+#define WIDTH 1000
 #define HEIGHT 500
 #define NUMBER_OF_PLANES 2
 #define ANGULAR_VELOCITY 1
@@ -17,12 +17,33 @@
 
 using namespace std;
 
+typedef struct
+{
+    pair<int, int> lowerLeftCorner;
+    int width;
+    int height;
+} viewport;
+
 unsigned int mod(int a, int b);
 unsigned int actionFromAngle(float angle);
 void processInput(GLFWwindow *window, game_entity planes[]);
 void framebuffer_size_callback(GLFWwindow *window, int width, int height);
+void bindViewport(viewport);
 
-vector<parallax_image> images;
+viewport viewports[] = {
+    {
+        lowerLeftCorner : {0, 0},
+        width : WIDTH / 2,
+        height : HEIGHT,
+    },
+    {
+        lowerLeftCorner : {(WIDTH / 2) + 1, 0},
+        width : WIDTH / 2,
+        height : HEIGHT,
+    }};
+
+vector<parallax_image>
+    images;
 
 int main()
 {
@@ -35,7 +56,7 @@ int main()
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-    GLFWwindow *window = glfwCreateWindow(LENGTH, HEIGHT, "Simple translation exercise", NULL, NULL);
+    GLFWwindow *window = glfwCreateWindow(WIDTH, HEIGHT, "Simple translation exercise", NULL, NULL);
     if (window == NULL)
     {
         std::cout << "Failed to create GLFW window" << std::endl;
@@ -46,8 +67,6 @@ int main()
 
     glewExperimental = GL_TRUE;
     glewInit();
-
-    glViewport(0, 0, LENGTH, HEIGHT);
 
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
@@ -74,9 +93,9 @@ int main()
     int offsetyLocation = glGetUniformLocation(shaderProgram, "offsety");
 
     float backgroundBuffer[12];
-    fillRectangleBuffer(1, 2, backgroundBuffer);
+    fillRectangleBuffer(2, 2, backgroundBuffer);
     float planeBuffer[12];
-    fillRectangleBuffer(0.15f, 0.2f, planeBuffer);
+    fillRectangleBuffer(0.3f, 0.4f, planeBuffer);
 
     unsigned int backgroundVBO;
     glGenBuffers(1, &backgroundVBO);
@@ -100,9 +119,9 @@ int main()
 
     images.push_back(parallax_image("./textures/layers/parallax-mountain-bg.png", 0.0f, 0.0f, 1.0f, true, offsetxLocation, offsetyLocation));
     images.push_back(parallax_image("./textures/layers/parallax-mountain-mountain-far.png", 0.01f, 0.005f, 1.0f, true, offsetxLocation, offsetyLocation));
-    images.push_back(parallax_image("./textures/layers/parallax-mountain-mountains.png", 0.1f, 0.05f, 2.0f, false, offsetxLocation, offsetyLocation));
-    images.push_back(parallax_image("./textures/layers/parallax-mountain-trees.png", 0.5f, 0.25f, 2.0f, false, offsetxLocation, offsetyLocation));
-    images.push_back(parallax_image("./textures/layers/parallax-mountain-foreground-trees.png", 1.0f, 1.0f, 2.0f, false, offsetxLocation, offsetyLocation));
+    images.push_back(parallax_image("./textures/layers/parallax-mountain-mountains.png", 0.1f, 0.05f, 1.0f, false, offsetxLocation, offsetyLocation));
+    images.push_back(parallax_image("./textures/layers/parallax-mountain-trees.png", 0.5f, 0.25f, 1.0f, false, offsetxLocation, offsetyLocation));
+    images.push_back(parallax_image("./textures/layers/parallax-mountain-foreground-trees.png", 1.0f, 1.0f, 1.0f, false, offsetxLocation, offsetyLocation));
 
     for (auto &image : images)
     {
@@ -119,7 +138,7 @@ int main()
         glGenBuffers(1, &textureVBO);
         glBindBuffer(GL_ARRAY_BUFFER, textureVBO);
         float buffer[8];
-        image.fillTextureBuffer(buffer, LENGTH / 2, HEIGHT / 2);
+        image.fillTextureBuffer(buffer, WIDTH / 2, HEIGHT);
         glBufferData(GL_ARRAY_BUFFER, sizeof(buffer), buffer, GL_STATIC_DRAW);
         glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void *)0);
         glEnableVertexAttribArray(1);
@@ -149,7 +168,6 @@ int main()
 
     float speed[] = {0.002, 0.002};
     game_entity planes[] = {game_entity(0, 0, -0.5, 0, 0), game_entity(0.2, 0, -0.5, 0, 0)};
-    vector2d screenCenter[] = {{-0.5f, 0}, {0.5f, 0}};
     timer t(FPS_MAX);
     while (!glfwWindowShouldClose(window))
     {
@@ -171,7 +189,8 @@ int main()
             {
                 image.bind();
                 image.scrollTo(planes[i].position);
-                glUniform1f(positionxLocation, screenCenter[i].x);
+                bindViewport(viewports[i]);
+                glUniform1f(positionxLocation, 0.0f);
                 glUniform1f(positionyLocation, 0.0f);
                 glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
             }
@@ -180,10 +199,11 @@ int main()
         glBindVertexArray(planeVAO);
         for (int i = 0; i < NUMBER_OF_PLANES; i++)
         {
+            bindViewport(viewports[i]);
             for (int j = 0; j < NUMBER_OF_PLANES; j++)
             {
-                glUniform1f(positionxLocation, screenCenter[i].x + planes[j].position.x - planes[i].position.x);
-                glUniform1f(positionyLocation, screenCenter[i].y + planes[j].position.y - planes[i].position.y);
+                glUniform1f(positionxLocation, planes[j].position.x - planes[i].position.x);
+                glUniform1f(positionyLocation, planes[j].position.y - planes[i].position.y);
                 redPlaneSprite.BindAction(actionFromAngle(planes[j].angle));
                 glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
             }
@@ -214,7 +234,16 @@ void processInput(GLFWwindow *window, game_entity planes[])
 
 void framebuffer_size_callback(GLFWwindow *window, int width, int height)
 {
-    glViewport(0, 0, width, height);
+    viewports[0] = viewport{
+        lowerLeftCorner : {0, 0},
+        width : width / 2,
+        height : height
+    };
+    viewports[1] = viewport{
+        lowerLeftCorner : {(width / 2) + 1, 0},
+        width : width / 2,
+        height : height
+    };
     for (auto image : images)
     {
         image.bind();
@@ -222,11 +251,16 @@ void framebuffer_size_callback(GLFWwindow *window, int width, int height)
         glGenBuffers(1, &textureVBO);
         glBindBuffer(GL_ARRAY_BUFFER, textureVBO);
         float buffer[8];
-        image.fillTextureBuffer(buffer, width / 2, height / 2);
+        image.fillTextureBuffer(buffer, width / 2, height);
         glBufferData(GL_ARRAY_BUFFER, sizeof(buffer), buffer, GL_STATIC_DRAW);
         glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void *)0);
         glEnableVertexAttribArray(1);
     }
+}
+
+void bindViewport(viewport v)
+{
+    glViewport(v.lowerLeftCorner.first, v.lowerLeftCorner.second, v.width, v.height);
 }
 
 unsigned int actionFromAngle(float angle)
