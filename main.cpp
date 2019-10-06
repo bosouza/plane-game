@@ -20,10 +20,9 @@ using namespace std;
 unsigned int mod(int a, int b);
 unsigned int actionFromAngle(float angle);
 void processInput(GLFWwindow *window, game_entity planes[]);
-void framebuffer_size_callback(GLFWwindow *window, int width, int height)
-{
-    glViewport(0, 0, width, height);
-}
+void framebuffer_size_callback(GLFWwindow *window, int width, int height);
+
+vector<parallax_image> images;
 
 int main()
 {
@@ -99,12 +98,11 @@ int main()
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
-    parallax_image images[] = {
-        parallax_image("./textures/layers/parallax-mountain-bg.png", 0.0f, 0.0f, 1.0f, offsetxLocation, offsetyLocation),
-        parallax_image("./textures/layers/parallax-mountain-mountain-far.png", 0.01f, 0.005f, 1.0f, offsetxLocation, offsetyLocation),
-        parallax_image("./textures/layers/parallax-mountain-mountains.png", 0.1f, 0.05f, 2.0f, offsetxLocation, offsetyLocation),
-        parallax_image("./textures/layers/parallax-mountain-trees.png", 0.5f, 0.25f, 2.0f, offsetxLocation, offsetyLocation),
-        parallax_image("./textures/layers/parallax-mountain-foreground-trees.png", 1.0f, 1.0f, 2.0f, offsetxLocation, offsetyLocation)};
+    images.push_back(parallax_image("./textures/layers/parallax-mountain-bg.png", 0.0f, 0.0f, 1.0f, true, offsetxLocation, offsetyLocation));
+    images.push_back(parallax_image("./textures/layers/parallax-mountain-mountain-far.png", 0.01f, 0.005f, 1.0f, true, offsetxLocation, offsetyLocation));
+    images.push_back(parallax_image("./textures/layers/parallax-mountain-mountains.png", 0.1f, 0.05f, 2.0f, false, offsetxLocation, offsetyLocation));
+    images.push_back(parallax_image("./textures/layers/parallax-mountain-trees.png", 0.5f, 0.25f, 2.0f, false, offsetxLocation, offsetyLocation));
+    images.push_back(parallax_image("./textures/layers/parallax-mountain-foreground-trees.png", 1.0f, 1.0f, 2.0f, false, offsetxLocation, offsetyLocation));
 
     for (auto &image : images)
     {
@@ -121,7 +119,7 @@ int main()
         glGenBuffers(1, &textureVBO);
         glBindBuffer(GL_ARRAY_BUFFER, textureVBO);
         float buffer[8];
-        image.fillTextureBuffer(buffer);
+        image.fillTextureBuffer(buffer, LENGTH / 2, HEIGHT / 2);
         glBufferData(GL_ARRAY_BUFFER, sizeof(buffer), buffer, GL_STATIC_DRAW);
         glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void *)0);
         glEnableVertexAttribArray(1);
@@ -151,7 +149,7 @@ int main()
 
     float speed[] = {0.002, 0.002};
     game_entity planes[] = {game_entity(0, 0, -0.5, 0, 0), game_entity(0.2, 0, -0.5, 0, 0)};
-    vector2d screenCenter[] = {{-0.5f, -0.5f}, {0.5f, -0.5f}};
+    vector2d screenCenter[] = {{-0.5f, 0}, {0.5f, 0}};
     timer t(FPS_MAX);
     while (!glfwWindowShouldClose(window))
     {
@@ -212,6 +210,23 @@ void processInput(GLFWwindow *window, game_entity planes[])
         planes[1].angularVelocity = -ANGULAR_VELOCITY;
     if (glfwGetKey(window, GLFW_KEY_L) == GLFW_PRESS)
         planes[1].angularVelocity = ANGULAR_VELOCITY;
+}
+
+void framebuffer_size_callback(GLFWwindow *window, int width, int height)
+{
+    glViewport(0, 0, width, height);
+    for (auto image : images)
+    {
+        image.bind();
+        unsigned int textureVBO;
+        glGenBuffers(1, &textureVBO);
+        glBindBuffer(GL_ARRAY_BUFFER, textureVBO);
+        float buffer[8];
+        image.fillTextureBuffer(buffer, width / 2, height / 2);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(buffer), buffer, GL_STATIC_DRAW);
+        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void *)0);
+        glEnableVertexAttribArray(1);
+    }
 }
 
 unsigned int actionFromAngle(float angle)

@@ -15,13 +15,14 @@ private:
     unsigned int textureID;
     int width;
     int height;
+    bool allignCenter;
 
 public:
-    parallax_image(std::string path, float parallaxRatex, float parallaxRatey, float stretch, int offsetxLocation, int offsetyLocation);
+    parallax_image(std::string path, float parallaxRatex, float parallaxRatey, float stretch, bool allignCenter, int offsetxLocation, int offsetyLocation);
     ~parallax_image() {}
     void bind();
     void scrollTo(vector2d position);
-    void fillTextureBuffer(float buffer[]);
+    void fillTextureBuffer(float buffer[], int screenWidth, int screenHeight);
 };
 
 #endif
