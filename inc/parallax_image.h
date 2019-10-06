@@ -15,6 +15,8 @@ private:
     unsigned int textureID;
     int width;
     int height;
+    float pWidth;
+    float pHeight;
     bool allignCenter;
 
 public:

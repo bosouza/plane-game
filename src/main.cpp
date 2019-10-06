@@ -5,7 +5,7 @@
 #define WIDTH 1000
 #define HEIGHT 500
 #define NUMBER_OF_PLANES 2
-#define ANGULAR_VELOCITY 1
+#define ANGULAR_VELOCITY 2
 #define FPS_MAX 120
 
 #include <util_opengl.h>
@@ -95,7 +95,7 @@ int main()
     float backgroundBuffer[12];
     fillRectangleBuffer(2, 2, backgroundBuffer);
     float planeBuffer[12];
-    fillRectangleBuffer(0.3f, 0.4f, planeBuffer);
+    fillRectangleBuffer(0.15f, 0.2f, planeBuffer);
 
     unsigned int backgroundVBO;
     glGenBuffers(1, &backgroundVBO);
@@ -118,10 +118,10 @@ int main()
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
     images.push_back(parallax_image("./textures/layers/parallax-mountain-bg.png", 0.0f, 0.0f, 1.0f, true, offsetxLocation, offsetyLocation));
-    images.push_back(parallax_image("./textures/layers/parallax-mountain-mountain-far.png", 0.01f, 0.005f, 1.0f, true, offsetxLocation, offsetyLocation));
-    images.push_back(parallax_image("./textures/layers/parallax-mountain-mountains.png", 0.1f, 0.05f, 1.0f, false, offsetxLocation, offsetyLocation));
-    images.push_back(parallax_image("./textures/layers/parallax-mountain-trees.png", 0.5f, 0.25f, 1.0f, false, offsetxLocation, offsetyLocation));
-    images.push_back(parallax_image("./textures/layers/parallax-mountain-foreground-trees.png", 1.0f, 1.0f, 1.0f, false, offsetxLocation, offsetyLocation));
+    images.push_back(parallax_image("./textures/layers/parallax-mountain-mountain-far.png", 0.005f, 0.005f, 1.0f, true, offsetxLocation, offsetyLocation));
+    images.push_back(parallax_image("./textures/layers/parallax-mountain-mountains.png", 0.01f, 0.01f, 0.7f, false, offsetxLocation, offsetyLocation));
+    images.push_back(parallax_image("./textures/layers/parallax-mountain-trees.png", 0.05f, 0.05f, 0.4f, false, offsetxLocation, offsetyLocation));
+    images.push_back(parallax_image("./textures/layers/parallax-mountain-foreground-trees.png", 0.1f, 0.1f, 0.2f, false, offsetxLocation, offsetyLocation));
 
     for (auto &image : images)
     {
@@ -166,19 +166,15 @@ int main()
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void *)0);
     glEnableVertexAttribArray(1);
 
-    float speed[] = {0.002, 0.002};
-    game_entity planes[] = {game_entity(0, 0, -0.5, 0, 0), game_entity(0.2, 0, -0.5, 0, 0)};
+    game_entity planes[] = {game_entity(0, 0, -1, 0, 0), game_entity(0.2, 0, -1, 0, 0)};
+    vector2d screenPosition[NUMBER_OF_PLANES];
     timer t(FPS_MAX);
     while (!glfwWindowShouldClose(window))
     {
         t.update();
         processInput(window, planes);
         for (int i = 0; i < NUMBER_OF_PLANES; i++)
-        {
             planes[i].step(t.getElapsedTime());
-            if (planes[i].position.y < 0)
-                planes[i].position.y = 0;
-        }
 
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
@@ -188,7 +184,10 @@ int main()
             for (int i = 0; i < NUMBER_OF_PLANES; i++)
             {
                 image.bind();
-                image.scrollTo(planes[i].position);
+                screenPosition[i] = planes[i].position;
+                if (screenPosition[i].y < 0)
+                    screenPosition[i].y = 0;
+                image.scrollTo(screenPosition[i]);
                 bindViewport(viewports[i]);
                 glUniform1f(positionxLocation, 0.0f);
                 glUniform1f(positionyLocation, 0.0f);
@@ -202,8 +201,8 @@ int main()
             bindViewport(viewports[i]);
             for (int j = 0; j < NUMBER_OF_PLANES; j++)
             {
-                glUniform1f(positionxLocation, planes[j].position.x - planes[i].position.x);
-                glUniform1f(positionyLocation, planes[j].position.y - planes[i].position.y);
+                glUniform1f(positionxLocation, planes[j].position.x - screenPosition[i].x);
+                glUniform1f(positionyLocation, planes[j].position.y - screenPosition[i].y);
                 redPlaneSprite.BindAction(actionFromAngle(planes[j].angle));
                 glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
             }

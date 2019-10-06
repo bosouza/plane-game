@@ -56,44 +56,43 @@ void parallax_image::bind()
 
 void parallax_image::fillTextureBuffer(float buffer[], int screenWidth, int screenHeight)
 {
-    float pWidth, pHeight;
     if (screenWidth / screenHeight > this->width / this->height)
     {
-        pWidth = 1.0f / this->stretch;
-        pHeight = ((float)screenHeight / screenWidth) * ((float)this->width / this->height) / this->stretch;
+        this->pWidth = 1.0f / this->stretch;
+        this->pHeight = ((float)screenHeight / screenWidth) * ((float)this->width / this->height) / this->stretch;
     }
     else
     {
-        pHeight = 1.0f / this->stretch;
-        pWidth = ((float)screenWidth / screenHeight) * ((float)this->height / this->width) / this->stretch;
+        this->pHeight = 1.0f / this->stretch;
+        this->pWidth = ((float)screenWidth / screenHeight) * ((float)this->height / this->width) / this->stretch;
     }
-    std::cout << "image: " << this->path << " pWidth: " << pWidth << " pHeight: " << pHeight << std::endl;
+    std::cout << "image: " << this->path << " pWidth: " << this->pWidth << " pHeight: " << this->pHeight << std::endl;
     if (this->allignCenter)
     {
-        buffer[0] = 1 - ((1 - pWidth) / 2);
-        buffer[1] = 1 - ((1 - pHeight) / 2);
-        buffer[2] = 1 - ((1 - pWidth) / 2);
-        buffer[3] = (1 - pHeight) / 2;
-        buffer[4] = (1 - pWidth) / 2;
-        buffer[5] = (1 - pHeight) / 2;
-        buffer[6] = (1 - pWidth) / 2;
-        buffer[7] = 1 - ((1 - pHeight) / 2);
+        buffer[0] = 1 - ((1 - this->pWidth) / 2);
+        buffer[1] = 1 - ((1 - this->pHeight) / 2);
+        buffer[2] = 1 - ((1 - this->pWidth) / 2);
+        buffer[3] = (1 - this->pHeight) / 2;
+        buffer[4] = (1 - this->pWidth) / 2;
+        buffer[5] = (1 - this->pHeight) / 2;
+        buffer[6] = (1 - this->pWidth) / 2;
+        buffer[7] = 1 - ((1 - this->pHeight) / 2);
     }
     else
     {
-        buffer[0] = pWidth;
-        buffer[1] = pHeight;
-        buffer[2] = pWidth;
+        buffer[0] = this->pWidth;
+        buffer[1] = this->pHeight;
+        buffer[2] = this->pWidth;
         buffer[3] = 0.0f;
         buffer[4] = 0.0f;
         buffer[5] = 0.0f;
         buffer[6] = 0.0f;
-        buffer[7] = pHeight;
+        buffer[7] = this->pHeight;
     }
 }
 
 void parallax_image::scrollTo(vector2d position)
 {
-    glUniform1f(this->offsetxLocation, position.x * this->parallaxRatex / this->stretch);
-    glUniform1f(this->offsetyLocation, position.y * this->parallaxRatey / this->stretch);
+    glUniform1f(this->offsetxLocation, position.x * this->parallaxRatex * this->pWidth / this->stretch);
+    glUniform1f(this->offsetyLocation, position.y * this->parallaxRatey * this->pHeight / this->stretch);
 }
