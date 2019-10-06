@@ -170,15 +170,19 @@ int main()
     glEnableVertexAttribArray(1);
 
     float speed[] = {0.002, 0.002};
-    game_entity planes[] = {game_entity(0, 0, 0.5, 0, 0), game_entity(1, 0, 0.5, 0, 0)};
-    pair<float, float> screenCenter[] = {{-0.5f, -0.5f}, {0.5f, -0.5f}};
+    game_entity planes[] = {game_entity(0, 0, -0.5, 0, 0), game_entity(0.2, 0, -0.5, 0, 0)};
+    vector2d screenCenter[] = {{-0.5f, -0.5f}, {0.5f, -0.5f}};
     timer t;
     while (!glfwWindowShouldClose(window))
     {
         t.update();
         processInput(window, planes);
         for (int i = 0; i < NUMBER_OF_PLANES; i++)
+        {
             planes[i].step(t.getElapsedTime());
+            if (planes[i].position.y < 0)
+                planes[i].position.y = 0;
+        }
 
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
@@ -190,7 +194,7 @@ int main()
                 glBindVertexArray(image.VAO);
                 glBindTexture(GL_TEXTURE_2D, image.textureId);
 
-                glUniform1f(positionxLocation, screenCenter[i].first);
+                glUniform1f(positionxLocation, screenCenter[i].x);
                 glUniform1f(positionyLocation, 0.0f);
                 glUniform1f(offsetxLocation, planes[i].position.x * image.parallaxRatex / image.stretch);
                 glUniform1f(offsetyLocation, planes[i].position.y * image.parallaxRatey / image.stretch);
@@ -201,13 +205,13 @@ int main()
         glBindVertexArray(planeVAO);
         for (int i = 0; i < NUMBER_OF_PLANES; i++)
         {
-            // for (int j = 0; j < NUMBER_OF_PLANES; j++)
-            // {
-            glUniform1f(positionxLocation, screenCenter[i].first);
-            glUniform1f(positionyLocation, screenCenter[i].second);
-            redPlaneSprite.BindAction(actionFromAngle(planes[i].angle));
-            glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-            // }
+            for (int j = 0; j < NUMBER_OF_PLANES; j++)
+            {
+                glUniform1f(positionxLocation, screenCenter[i].x + planes[j].position.x - planes[i].position.x);
+                glUniform1f(positionyLocation, screenCenter[i].y + planes[j].position.y - planes[i].position.y);
+                redPlaneSprite.BindAction(actionFromAngle(planes[j].angle));
+                glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+            }
         }
         glfwSwapBuffers(window);
         glfwPollEvents();
