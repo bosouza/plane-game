@@ -7,6 +7,8 @@
 #define NUMBER_OF_PLANES 2
 #define ANGULAR_VELOCITY 2
 #define FPS_MAX 120
+#define BULLET_TRAVEL_DISTANCE 5
+#define BULLET_SPEED 3
 
 #include <util_opengl.h>
 #include <button_util.h>
@@ -14,6 +16,7 @@
 #include <sprite.h>
 #include <game_entity.h>
 #include <timer.h>
+#include <bullet.h>
 
 using namespace std;
 
@@ -29,6 +32,7 @@ unsigned int actionFromAngle(float angle);
 void processInput(GLFWwindow *window, game_entity planes[]);
 void framebuffer_size_callback(GLFWwindow *window, int width, int height);
 void bindViewport(viewport);
+unsigned int createVAO(unsigned int *VAO, unsigned int VBO, unsigned int EBO, sprite &s);
 
 viewport viewports[] = {
     {
@@ -42,8 +46,8 @@ viewport viewports[] = {
         height : HEIGHT,
     }};
 
-vector<parallax_image>
-    images;
+vector<parallax_image> images;
+press_event buttons[NUMBER_OF_PLANES];
 
 int main()
 {
@@ -96,6 +100,8 @@ int main()
     fillRectangleBuffer(2, 2, backgroundBuffer);
     float planeBuffer[12];
     fillRectangleBuffer(0.15f, 0.2f, planeBuffer);
+    float bulletBuffer[12];
+    fillRectangleBuffer(0.02f, 0.03f, bulletBuffer);
 
     unsigned int backgroundVBO;
     glGenBuffers(1, &backgroundVBO);
@@ -106,6 +112,11 @@ int main()
     glGenBuffers(1, &planeVBO);
     glBindBuffer(GL_ARRAY_BUFFER, planeVBO);
     glBufferData(GL_ARRAY_BUFFER, sizeof(planeBuffer), planeBuffer, GL_STATIC_DRAW);
+
+    unsigned int bulletVBO;
+    glGenBuffers(1, &bulletVBO);
+    glBindBuffer(GL_ARRAY_BUFFER, bulletVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(bulletBuffer), bulletBuffer, GL_STATIC_DRAW);
 
     unsigned int indices[] = {
         // note that we start from 0!
@@ -144,31 +155,20 @@ int main()
         glEnableVertexAttribArray(1);
     }
 
+    //plane VAO
     sprite redPlaneSprite("./textures/red-plane-sprite.png", 5, 5, offsetxLocation, offsetyLocation);
-
     unsigned int planeVAO;
-    glGenVertexArrays(1, &planeVAO);
-    glBindVertexArray(planeVAO);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    createVAO(&planeVAO, planeVBO, EBO, redPlaneSprite);
 
-    // position attribute
-    glBindBuffer(GL_ARRAY_BUFFER, planeVBO);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *)0);
-    glEnableVertexAttribArray(0);
+    //bullet VAO
+    sprite bulletSprite("./textures/bullet.png", 1, 1, offsetxLocation, offsetyLocation);
+    unsigned int bulletVAO;
+    createVAO(&bulletVAO, bulletVBO, EBO, bulletSprite);
 
-    // texture attribute
-    float buffer[8];
-    redPlaneSprite.FillTextureBuffer(buffer);
-    unsigned int textureVBO;
-    glGenBuffers(1, &textureVBO);
-    glBindBuffer(GL_ARRAY_BUFFER, textureVBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(buffer), buffer, GL_STATIC_DRAW);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void *)0);
-    glEnableVertexAttribArray(1);
-
-    game_entity planes[] = {game_entity(0, 0, -1, 0, 0), game_entity(0.2, 0, -1, 0, 0)};
+    game_entity planes[] = {game_entity(0, 0, 1, 0, 0), game_entity(0.2, 0, 1, 0, 0)};
     vector2d screenPosition[NUMBER_OF_PLANES];
     timer t(FPS_MAX);
+    list<bullet> bullets;
     while (!glfwWindowShouldClose(window))
     {
         t.update();
@@ -179,6 +179,7 @@ int main()
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
+        //draw background images
         for (parallax_image image : images)
         {
             for (int i = 0; i < NUMBER_OF_PLANES; i++)
@@ -195,6 +196,7 @@ int main()
             }
         }
 
+        //draw planes
         glBindVertexArray(planeVAO);
         for (int i = 0; i < NUMBER_OF_PLANES; i++)
         {
@@ -207,6 +209,36 @@ int main()
                 glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
             }
         }
+
+        // add new bullets
+        for (int i = 0; i < NUMBER_OF_PLANES; i++)
+        {
+            if (buttons[i].pressEvent())
+            {
+                bullets.push_back(bullet(planes[i].position.x, planes[i].position.y, BULLET_SPEED, planes[i].angle, 0, i, BULLET_TRAVEL_DISTANCE));
+            }
+        }
+
+        //draw bullets
+        glBindVertexArray(bulletVAO);
+        bulletSprite.BindAction(0);
+        for (int i = 0; i < NUMBER_OF_PLANES; i++)
+        {
+            bindViewport(viewports[i]);
+            for (auto bulletI = bullets.begin(); bulletI != bullets.end(); bulletI++)
+            {
+                if (!bulletI->isAlive())
+                {
+                    bullets.erase(bulletI);
+                    continue;
+                }
+                bulletI->step(t.getElapsedTime());
+                glUniform1f(positionxLocation, bulletI->position.x - screenPosition[i].x);
+                glUniform1f(positionyLocation, bulletI->position.y - screenPosition[i].y);
+                glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+            }
+        }
+
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
@@ -229,6 +261,9 @@ void processInput(GLFWwindow *window, game_entity planes[])
         planes[1].angularVelocity = -ANGULAR_VELOCITY;
     if (glfwGetKey(window, GLFW_KEY_L) == GLFW_PRESS)
         planes[1].angularVelocity = ANGULAR_VELOCITY;
+
+    buttons[0].setState(glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS);
+    buttons[1].setState(glfwGetKey(window, GLFW_KEY_RIGHT_SHIFT) == GLFW_PRESS);
 }
 
 void framebuffer_size_callback(GLFWwindow *window, int width, int height)
@@ -255,6 +290,28 @@ void framebuffer_size_callback(GLFWwindow *window, int width, int height)
         glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void *)0);
         glEnableVertexAttribArray(1);
     }
+}
+
+unsigned int createVAO(unsigned int *VAO, unsigned int VBO, unsigned int EBO, sprite &s)
+{
+    glGenVertexArrays(1, VAO);
+    glBindVertexArray(*VAO);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+
+    // position attribute
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *)0);
+    glEnableVertexAttribArray(0);
+
+    // texture attribute
+    float buffer[8];
+    s.FillTextureBuffer(buffer);
+    unsigned int textureVBO;
+    glGenBuffers(1, &textureVBO);
+    glBindBuffer(GL_ARRAY_BUFFER, textureVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(buffer), buffer, GL_STATIC_DRAW);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void *)0);
+    glEnableVertexAttribArray(1);
 }
 
 void bindViewport(viewport v)

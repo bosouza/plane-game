@@ -9,6 +9,9 @@ typedef struct
 
 class game_entity
 {
+protected:
+    float travelledDistance;
+
 public:
     float speed;
     float angle;
