@@ -55,8 +55,8 @@ int main()
     glEnable(GL_TEXTURE_2D);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-    unsigned int vertexShader = CreateShader(GL_VERTEX_SHADER, "./simpleVertexShader.vert");
-    unsigned int fragmentShader = CreateShader(GL_FRAGMENT_SHADER, "./simpleFragShader.frag");
+    unsigned int vertexShader = CreateShader(GL_VERTEX_SHADER, "./shaders/simpleVertexShader.vert");
+    unsigned int fragmentShader = CreateShader(GL_FRAGMENT_SHADER, "./shaders/simpleFragShader.frag");
 
     unsigned int shaderProgram;
     shaderProgram = glCreateProgram();
