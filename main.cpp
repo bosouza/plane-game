@@ -6,10 +6,12 @@
 #define HEIGHT 500
 #define NUMBER_OF_PLANES 2
 #define ANGULAR_VELOCITY 1
+#define FPS_MAX 120
 
 #include <util_opengl.h>
 #include <button_util.h>
-#include <parallax_loader.h>
+#include <parallax_image.h>
+#include <sprite.h>
 #include <game_entity.h>
 #include <timer.h>
 
@@ -55,35 +57,7 @@ int main()
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     unsigned int vertexShader = CreateShader(GL_VERTEX_SHADER, "./simpleVertexShader.vert");
-
     unsigned int fragmentShader = CreateShader(GL_FRAGMENT_SHADER, "./simpleFragShader.frag");
-
-    parallaxImage images[] = {
-        {path : "./textures/layers/parallax-mountain-bg.png",
-         parallaxRatex : 0.0f,
-         parallaxRatey : 0.0f,
-         stretch : 1.0f},
-        {path : "./textures/layers/parallax-mountain-mountain-far.png",
-         parallaxRatex : 0.01f,
-         parallaxRatey : 0.005f,
-         stretch : 1.0f},
-        {path : "./textures/layers/parallax-mountain-mountains.png",
-         parallaxRatex : 0.1f,
-         parallaxRatey : 0.05f,
-         stretch : 2.0f},
-        {path : "./textures/layers/parallax-mountain-trees.png",
-         parallaxRatex : 0.5f,
-         parallaxRatey : 0.25f,
-         stretch : 2.0f},
-        {path : "./textures/layers/parallax-mountain-foreground-trees.png",
-         parallaxRatex : 1.0f,
-         parallaxRatey : 1.0f,
-         stretch : 2.0f}};
-    if (!LoadImages(images, 5))
-    {
-        glfwTerminate();
-        return -1;
-    }
 
     unsigned int shaderProgram;
     shaderProgram = glCreateProgram();
@@ -125,10 +99,16 @@ int main()
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
+    parallax_image images[] = {
+        parallax_image("./textures/layers/parallax-mountain-bg.png", 0.0f, 0.0f, 1.0f, offsetxLocation, offsetyLocation),
+        parallax_image("./textures/layers/parallax-mountain-mountain-far.png", 0.01f, 0.005f, 1.0f, offsetxLocation, offsetyLocation),
+        parallax_image("./textures/layers/parallax-mountain-mountains.png", 0.1f, 0.05f, 2.0f, offsetxLocation, offsetyLocation),
+        parallax_image("./textures/layers/parallax-mountain-trees.png", 0.5f, 0.25f, 2.0f, offsetxLocation, offsetyLocation),
+        parallax_image("./textures/layers/parallax-mountain-foreground-trees.png", 1.0f, 1.0f, 2.0f, offsetxLocation, offsetyLocation)};
+
     for (auto &image : images)
     {
-        glGenVertexArrays(1, &image.VAO);
-        glBindVertexArray(image.VAO);
+        image.bind();
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
 
         // position attribute
@@ -140,14 +120,14 @@ int main()
         unsigned int textureVBO;
         glGenBuffers(1, &textureVBO);
         glBindBuffer(GL_ARRAY_BUFFER, textureVBO);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(image.maping), image.maping, GL_STATIC_DRAW);
+        float buffer[8];
+        image.fillTextureBuffer(buffer);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(buffer), buffer, GL_STATIC_DRAW);
         glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void *)0);
         glEnableVertexAttribArray(1);
     }
 
-    sprite redPlaneSprite("./textures/red-plane-sprite.png", 5, 5,
-                          glGetUniformLocation(shaderProgram, "offsetx"),
-                          glGetUniformLocation(shaderProgram, "offsety"));
+    sprite redPlaneSprite("./textures/red-plane-sprite.png", 5, 5, offsetxLocation, offsetyLocation);
 
     unsigned int planeVAO;
     glGenVertexArrays(1, &planeVAO);
@@ -172,7 +152,7 @@ int main()
     float speed[] = {0.002, 0.002};
     game_entity planes[] = {game_entity(0, 0, -0.5, 0, 0), game_entity(0.2, 0, -0.5, 0, 0)};
     vector2d screenCenter[] = {{-0.5f, -0.5f}, {0.5f, -0.5f}};
-    timer t;
+    timer t(FPS_MAX);
     while (!glfwWindowShouldClose(window))
     {
         t.update();
@@ -187,17 +167,14 @@ int main()
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
-        for (parallaxImage image : images)
+        for (parallax_image image : images)
         {
             for (int i = 0; i < NUMBER_OF_PLANES; i++)
             {
-                glBindVertexArray(image.VAO);
-                glBindTexture(GL_TEXTURE_2D, image.textureId);
-
+                image.bind();
+                image.scrollTo(planes[i].position);
                 glUniform1f(positionxLocation, screenCenter[i].x);
                 glUniform1f(positionyLocation, 0.0f);
-                glUniform1f(offsetxLocation, planes[i].position.x * image.parallaxRatex / image.stretch);
-                glUniform1f(offsetyLocation, planes[i].position.y * image.parallaxRatey / image.stretch);
                 glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
             }
         }
