@@ -4,6 +4,7 @@
 #define GLEW_STATIC
 #include "GL/glew.h"
 #include "GLFW/glfw3.h"
+#define VERY_NEGATIVE -100000
 
 timer::timer(float FPSmax)
 {
@@ -29,4 +30,20 @@ void timer::update()
 double timer::getElapsedTime()
 {
     return this->elapsedTime;
+}
+
+event_timer::event_timer(double period)
+{
+    this->period = period;
+    this->previousTime = VERY_NEGATIVE;
+}
+
+void event_timer::start()
+{
+    this->previousTime = glfwGetTime();
+}
+
+bool event_timer::isElapsed()
+{
+    return glfwGetTime() - this->previousTime > this->period;
 }

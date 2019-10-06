@@ -14,4 +14,17 @@ public:
     double getElapsedTime();
 };
 
+class event_timer
+{
+private:
+    double period;
+    double previousTime;
+
+public:
+    event_timer(double period);
+    ~event_timer() {}
+    void start();
+    bool isElapsed();
+};
+
 #endif

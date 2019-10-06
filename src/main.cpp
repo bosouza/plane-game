@@ -9,6 +9,7 @@
 #define FPS_MAX 120
 #define BULLET_TRAVEL_DISTANCE 5
 #define BULLET_SPEED 3
+#define EXPLOSION_FRAME_PERIOD 0.03
 
 #include <util_opengl.h>
 #include <button_util.h>
@@ -17,6 +18,7 @@
 #include <game_entity.h>
 #include <timer.h>
 #include <bullet.h>
+#include <explosion.h>
 
 using namespace std;
 
@@ -102,6 +104,8 @@ int main()
     fillRectangleBuffer(0.15f, 0.2f, planeBuffer);
     float bulletBuffer[12];
     fillRectangleBuffer(0.02f, 0.03f, bulletBuffer);
+    float explosionBuffer[12];
+    fillRectangleBuffer(1, 1, explosionBuffer);
 
     unsigned int backgroundVBO;
     glGenBuffers(1, &backgroundVBO);
@@ -117,6 +121,11 @@ int main()
     glGenBuffers(1, &bulletVBO);
     glBindBuffer(GL_ARRAY_BUFFER, bulletVBO);
     glBufferData(GL_ARRAY_BUFFER, sizeof(bulletBuffer), bulletBuffer, GL_STATIC_DRAW);
+
+    unsigned int explosionVBO;
+    glGenBuffers(1, &explosionVBO);
+    glBindBuffer(GL_ARRAY_BUFFER, explosionVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(explosionBuffer), explosionBuffer, GL_STATIC_DRAW);
 
     unsigned int indices[] = {
         // note that we start from 0!
@@ -165,16 +174,32 @@ int main()
     unsigned int bulletVAO;
     createVAO(&bulletVAO, bulletVBO, EBO, bulletSprite);
 
+    //explosion VAO
+    sprite explosionBigSprite("./textures/explosion-nuclear.png", 5, 5, offsetxLocation, offsetyLocation);
+    unsigned int explosionVAO;
+    createVAO(&explosionVAO, explosionVBO, EBO, explosionBigSprite);
+
     game_entity planes[] = {game_entity(0, 0, 1, 0, 0), game_entity(0.2, 0, 1, 0, 0)};
     vector2d screenPosition[NUMBER_OF_PLANES];
     timer t(FPS_MAX);
     list<bullet> bullets;
+    list<explosion> explosions;
     while (!glfwWindowShouldClose(window))
     {
         t.update();
         processInput(window, planes);
         for (int i = 0; i < NUMBER_OF_PLANES; i++)
+        {
+            if (!planes[i].visible)
+                continue;
             planes[i].step(t.getElapsedTime());
+            if (planes[i].position.y < -0.99)
+            {
+                planes[i].speed = 0;
+                planes[i].visible = false;
+                explosions.push_back(explosion({planes[i].position.x, planes[i].position.y + 0.4f}, &explosionBigSprite, EXPLOSION_FRAME_PERIOD));
+            }
+        }
 
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
@@ -203,6 +228,8 @@ int main()
             bindViewport(viewports[i]);
             for (int j = 0; j < NUMBER_OF_PLANES; j++)
             {
+                if (!planes[j].visible)
+                    continue;
                 glUniform1f(positionxLocation, planes[j].position.x - screenPosition[i].x);
                 glUniform1f(positionyLocation, planes[j].position.y - screenPosition[i].y);
                 redPlaneSprite.BindAction(actionFromAngle(planes[j].angle));
@@ -215,6 +242,8 @@ int main()
         {
             if (buttons[i].pressEvent())
             {
+                if (!planes[i].visible)
+                    continue;
                 bullets.push_back(bullet(planes[i].position.x, planes[i].position.y, BULLET_SPEED, planes[i].angle, 0, i, BULLET_TRAVEL_DISTANCE));
             }
         }
@@ -235,6 +264,23 @@ int main()
                 bulletI->step(t.getElapsedTime());
                 glUniform1f(positionxLocation, bulletI->position.x - screenPosition[i].x);
                 glUniform1f(positionyLocation, bulletI->position.y - screenPosition[i].y);
+                glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+            }
+        }
+
+        //draw explosions
+        glBindVertexArray(explosionVAO);
+        for (int i = 0; i < NUMBER_OF_PLANES; i++)
+        {
+            bindViewport(viewports[i]);
+            for (auto explosionI = explosions.begin(); explosionI != explosions.end(); explosionI++)
+            {
+                if (explosionI->updateAndBind())
+                {
+                    explosions.erase(explosionI);
+                }
+                glUniform1f(positionxLocation, explosionI->position.x - screenPosition[i].x);
+                glUniform1f(positionyLocation, explosionI->position.y - screenPosition[i].y);
                 glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
             }
         }

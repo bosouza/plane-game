@@ -5,12 +5,12 @@ class sprite
 {
 private:
     unsigned int textureID;
-    unsigned int wQtd;
-    unsigned int hQtd;
     int offsetxLocation;
     int offsetyLocation;
 
 public:
+    unsigned int wQtd;
+    unsigned int hQtd;
     sprite(std::string path, unsigned int wQtd, unsigned int hQtd, int offsetxLocation, int offsetyLocation);
     ~sprite() {}
     void BindAction(unsigned int action);
