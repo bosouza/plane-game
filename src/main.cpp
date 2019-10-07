@@ -8,8 +8,13 @@
 #define ANGULAR_VELOCITY 2
 #define FPS_MAX 120
 #define BULLET_TRAVEL_DISTANCE 5
-#define BULLET_SPEED 3
+#define BULLET_SPEED 3.0f
 #define EXPLOSION_FRAME_PERIOD 0.03
+#define EXPLOSION_BULLET_FRAME_PERIOD 0.015
+#define HIT_DISTANCE 0.05
+#define PLANE_LIVES 10
+#define PLANE_SPEED 1
+#define FALLING_SPIN_VELOCITY 1
 
 #include <util_opengl.h>
 #include <button_util.h>
@@ -19,6 +24,7 @@
 #include <timer.h>
 #include <bullet.h>
 #include <explosion.h>
+#include <plane.h>
 
 using namespace std;
 
@@ -31,10 +37,11 @@ typedef struct
 
 unsigned int mod(int a, int b);
 unsigned int actionFromAngle(float angle);
-void processInput(GLFWwindow *window, game_entity planes[]);
+void processInput(GLFWwindow *window, plane planes[]);
 void framebuffer_size_callback(GLFWwindow *window, int width, int height);
 void bindViewport(viewport);
 unsigned int createVAO(unsigned int *VAO, unsigned int VBO, unsigned int EBO, sprite &s);
+bool isClose(vector2d a, vector2d b, float distance);
 
 viewport viewports[] = {
     {
@@ -106,6 +113,8 @@ int main()
     fillRectangleBuffer(0.02f, 0.03f, bulletBuffer);
     float explosionBuffer[12];
     fillRectangleBuffer(1, 1, explosionBuffer);
+    float explosionBulletBuffer[12];
+    fillRectangleBuffer(0.1f, 0.1f, explosionBulletBuffer);
 
     unsigned int backgroundVBO;
     glGenBuffers(1, &backgroundVBO);
@@ -126,6 +135,11 @@ int main()
     glGenBuffers(1, &explosionVBO);
     glBindBuffer(GL_ARRAY_BUFFER, explosionVBO);
     glBufferData(GL_ARRAY_BUFFER, sizeof(explosionBuffer), explosionBuffer, GL_STATIC_DRAW);
+
+    unsigned int explosionBulletVBO;
+    glGenBuffers(1, &explosionBulletVBO);
+    glBindBuffer(GL_ARRAY_BUFFER, explosionBulletVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(explosionBulletBuffer), explosionBulletBuffer, GL_STATIC_DRAW);
 
     unsigned int indices[] = {
         // note that we start from 0!
@@ -179,7 +193,13 @@ int main()
     unsigned int explosionVAO;
     createVAO(&explosionVAO, explosionVBO, EBO, explosionBigSprite);
 
-    game_entity planes[] = {game_entity(0, 0, 1, 0, 0), game_entity(0.2, 0, 1, 0, 0)};
+    //explosion bullet VAO
+    sprite explosionBulletSprite("./textures/explosion-bullet.png", 4, 4, offsetxLocation, offsetyLocation);
+    unsigned int explosionBulletVAO;
+    createVAO(&explosionBulletVAO, explosionBulletVBO, EBO, explosionBulletSprite);
+
+    plane planes[] = {plane(0, 1, PLANE_SPEED, 0, 0, PLANE_LIVES, FALLING_SPIN_VELOCITY),
+                      plane(3, 1, PLANE_SPEED, 3.1415f, 0, PLANE_LIVES, FALLING_SPIN_VELOCITY)};
     vector2d screenPosition[NUMBER_OF_PLANES];
     timer t(FPS_MAX);
     list<bullet> bullets;
@@ -188,16 +208,18 @@ int main()
     {
         t.update();
         processInput(window, planes);
+        for (auto bulletI = bullets.begin(); bulletI != bullets.end(); bulletI++)
+            bulletI->step(t.getElapsedTime());
         for (int i = 0; i < NUMBER_OF_PLANES; i++)
         {
-            if (!planes[i].visible)
+            if (planes[i].exploded)
                 continue;
             planes[i].step(t.getElapsedTime());
             if (planes[i].position.y < -0.99)
             {
                 planes[i].speed = 0;
-                planes[i].visible = false;
-                explosions.push_back(explosion({planes[i].position.x, planes[i].position.y + 0.4f}, &explosionBigSprite, EXPLOSION_FRAME_PERIOD));
+                planes[i].exploded = true;
+                explosions.push_back(explosion({planes[i].position.x, planes[i].position.y + 0.4f}, &explosionBigSprite, explosionVAO, EXPLOSION_FRAME_PERIOD));
             }
         }
 
@@ -228,7 +250,7 @@ int main()
             bindViewport(viewports[i]);
             for (int j = 0; j < NUMBER_OF_PLANES; j++)
             {
-                if (!planes[j].visible)
+                if (planes[j].exploded)
                     continue;
                 glUniform1f(positionxLocation, planes[j].position.x - screenPosition[i].x);
                 glUniform1f(positionyLocation, planes[j].position.y - screenPosition[i].y);
@@ -242,7 +264,7 @@ int main()
         {
             if (buttons[i].pressEvent())
             {
-                if (!planes[i].visible)
+                if (planes[i].exploded)
                     continue;
                 bullets.push_back(bullet(planes[i].position.x, planes[i].position.y, BULLET_SPEED, planes[i].angle, 0, i, BULLET_TRAVEL_DISTANCE));
             }
@@ -261,7 +283,13 @@ int main()
                     bullets.erase(bulletI);
                     continue;
                 }
-                bulletI->step(t.getElapsedTime());
+                if (isClose(bulletI->position, planes[bulletI->player == 0 ? 1 : 0].position, HIT_DISTANCE))
+                {
+                    explosions.push_back(explosion(bulletI->position, &explosionBulletSprite, explosionBulletVAO, EXPLOSION_BULLET_FRAME_PERIOD));
+                    planes[bulletI->player == 0 ? 1 : 0].hit();
+                    bullets.erase(bulletI);
+                    continue;
+                }
                 glUniform1f(positionxLocation, bulletI->position.x - screenPosition[i].x);
                 glUniform1f(positionyLocation, bulletI->position.y - screenPosition[i].y);
                 glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
@@ -269,7 +297,6 @@ int main()
         }
 
         //draw explosions
-        glBindVertexArray(explosionVAO);
         for (int i = 0; i < NUMBER_OF_PLANES; i++)
         {
             bindViewport(viewports[i]);
@@ -278,6 +305,7 @@ int main()
                 if (explosionI->updateAndBind())
                 {
                     explosions.erase(explosionI);
+                    continue;
                 }
                 glUniform1f(positionxLocation, explosionI->position.x - screenPosition[i].x);
                 glUniform1f(positionyLocation, explosionI->position.y - screenPosition[i].y);
@@ -293,7 +321,7 @@ int main()
     return 0;
 }
 
-void processInput(GLFWwindow *window, game_entity planes[])
+void processInput(GLFWwindow *window, plane planes[])
 {
     planes[0].angularVelocity = 0;
     planes[1].angularVelocity = 0;
@@ -358,6 +386,13 @@ unsigned int createVAO(unsigned int *VAO, unsigned int VBO, unsigned int EBO, sp
     glBufferData(GL_ARRAY_BUFFER, sizeof(buffer), buffer, GL_STATIC_DRAW);
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void *)0);
     glEnableVertexAttribArray(1);
+}
+
+bool isClose(vector2d a, vector2d b, float distance)
+{
+    float dx = a.x - b.x;
+    float dy = a.y - b.y;
+    return sqrt(dx * dx + dy * dy) < distance;
 }
 
 void bindViewport(viewport v)

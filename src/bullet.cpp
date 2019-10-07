@@ -10,7 +10,7 @@ bullet::bullet(float positionx, float positiony, float speed, float angle, float
 
 void bullet::step(float time)
 {
-    game_entity::step(time);
+    this->game_entity::step(time);
     if (this->travelledDistance > this->distanceToLive)
         this->alive = false;
 }

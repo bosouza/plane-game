@@ -9,7 +9,6 @@ game_entity::game_entity(float positionx, float positiony, float speed, float an
     this->angle = angle;
     this->angularVelocity = angularVelocity;
     this->travelledDistance = 0;
-    this->visible = true;
 }
 
 void game_entity::step(float time)

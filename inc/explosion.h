@@ -10,10 +10,11 @@ private:
     event_timer t;
     sprite *s;
     unsigned int action;
+    unsigned int VAO;
 
 public:
     vector2d position;
-    explosion(vector2d position, sprite *s, float period);
+    explosion(vector2d position, sprite *s, unsigned int VAO, float period);
     ~explosion() {}
     bool updateAndBind();
 };

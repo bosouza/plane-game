@@ -6,9 +6,9 @@ class bullet : public game_entity
 private:
     float distanceToLive;
     bool alive;
-    int player;
 
 public:
+    int player;
     bullet(float positionx, float positiony, float speed, float angle, float angularVelocity, int player, float distanceToLive);
     ~bullet() {}
     void step(float time);

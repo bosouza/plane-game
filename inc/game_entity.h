@@ -16,7 +16,6 @@ public:
     float speed;
     float angle;
     float angularVelocity;
-    bool visible;
     vector2d position;
     game_entity(float positionx, float positiony, float speed, float angle, float angularVelocity);
     ~game_entity() {}
