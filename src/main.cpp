@@ -2,19 +2,22 @@
 #define GLEW_STATIC
 #include "GL/glew.h"
 #include "GLFW/glfw3.h"
+#include "glm/glm.hpp"
+#include "glm/gtc/matrix_transform.hpp"
+#include "glm/gtc/type_ptr.hpp"
 #define WIDTH 1000
 #define HEIGHT 500
 #define NUMBER_OF_PLANES 2
 #define ANGULAR_VELOCITY 2
 #define FPS_MAX 120
 #define BULLET_TRAVEL_DISTANCE 5
-#define BULLET_SPEED 3.0f
+#define BULLET_SPEED -3.0f
 #define EXPLOSION_FRAME_PERIOD 0.03
 #define EXPLOSION_BULLET_FRAME_PERIOD 0.015
 #define HIT_DISTANCE 0.05
 #define PLANE_LIVES 10
-#define PLANE_SPEED 1
-#define FALLING_SPIN_VELOCITY 1
+#define PLANE_SPEED -1
+#define FALLING_SPIN_VELOCITY -1
 
 #include <util_opengl.h>
 #include <button_util.h>
@@ -69,7 +72,7 @@ int main()
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-    GLFWwindow *window = glfwCreateWindow(WIDTH, HEIGHT, "Simple translation exercise", NULL, NULL);
+    GLFWwindow *window = glfwCreateWindow(WIDTH, HEIGHT, "Plane Game", NULL, NULL);
     if (window == NULL)
     {
         std::cout << "Failed to create GLFW window" << std::endl;
@@ -104,6 +107,7 @@ int main()
     int positionyLocation = glGetUniformLocation(shaderProgram, "positiony");
     int offsetxLocation = glGetUniformLocation(shaderProgram, "offsetx");
     int offsetyLocation = glGetUniformLocation(shaderProgram, "offsety");
+    int rotationMatrixLocation = glGetUniformLocation(shaderProgram, "rotationMatrix");
 
     float backgroundBuffer[12];
     fillRectangleBuffer(2, 2, backgroundBuffer);
@@ -198,8 +202,8 @@ int main()
     unsigned int explosionBulletVAO;
     createVAO(&explosionBulletVAO, explosionBulletVBO, EBO, explosionBulletSprite);
 
-    plane planes[] = {plane(0, 1, PLANE_SPEED, 0, 0, PLANE_LIVES, FALLING_SPIN_VELOCITY),
-                      plane(3, 1, PLANE_SPEED, 3.1415f, 0, PLANE_LIVES, FALLING_SPIN_VELOCITY)};
+    plane planes[] = {plane(2, 1, PLANE_SPEED, 0, 0, PLANE_LIVES, FALLING_SPIN_VELOCITY),
+                      plane(0, 1, PLANE_SPEED, 3.1415f, 0, PLANE_LIVES, FALLING_SPIN_VELOCITY)};
     vector2d screenPosition[NUMBER_OF_PLANES];
     timer t(FPS_MAX);
     list<bullet> bullets;
@@ -237,6 +241,8 @@ int main()
                     screenPosition[i].y = 0;
                 image.scrollTo(screenPosition[i]);
                 bindViewport(viewports[i]);
+                glm::mat4 rotationMatrix = glm::rotate(glm::mat4(1), 0.0f, glm::vec3(0.0f, 0.0f, 1.0f));
+                glUniformMatrix4fv(rotationMatrixLocation, 1, GL_FALSE, glm::value_ptr(rotationMatrix));
                 glUniform1f(positionxLocation, 0.0f);
                 glUniform1f(positionyLocation, 0.0f);
                 glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
@@ -252,6 +258,8 @@ int main()
             {
                 if (planes[j].exploded)
                     continue;
+                glm::mat4 rotationMatrix = glm::rotate(glm::mat4(1), planes[j].angle, glm::vec3(0.0f, 0.0f, 1.0f));
+                glUniformMatrix4fv(rotationMatrixLocation, 1, GL_FALSE, glm::value_ptr(rotationMatrix));
                 glUniform1f(positionxLocation, planes[j].position.x - screenPosition[i].x);
                 glUniform1f(positionyLocation, planes[j].position.y - screenPosition[i].y);
                 redPlaneSprite.BindAction(actionFromAngle(planes[j].angle));
@@ -280,6 +288,7 @@ int main()
             {
                 if (!bulletI->isAlive())
                 {
+                    cout << "removing bullet" << endl;
                     bullets.erase(bulletI);
                     continue;
                 }
@@ -290,6 +299,8 @@ int main()
                     bullets.erase(bulletI);
                     continue;
                 }
+                glm::mat4 rotationMatrix = glm::rotate(glm::mat4(1), 0.0f, glm::vec3(0.0f, 0.0f, 1.0f));
+                glUniformMatrix4fv(rotationMatrixLocation, 1, GL_FALSE, glm::value_ptr(rotationMatrix));
                 glUniform1f(positionxLocation, bulletI->position.x - screenPosition[i].x);
                 glUniform1f(positionyLocation, bulletI->position.y - screenPosition[i].y);
                 glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
@@ -307,6 +318,8 @@ int main()
                     explosions.erase(explosionI);
                     continue;
                 }
+                glm::mat4 rotationMatrix = glm::rotate(glm::mat4(1), 0.0f, glm::vec3(0.0f, 0.0f, 1.0f));
+                glUniformMatrix4fv(rotationMatrixLocation, 1, GL_FALSE, glm::value_ptr(rotationMatrix));
                 glUniform1f(positionxLocation, explosionI->position.x - screenPosition[i].x);
                 glUniform1f(positionyLocation, explosionI->position.y - screenPosition[i].y);
                 glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);

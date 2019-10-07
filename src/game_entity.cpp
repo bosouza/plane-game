@@ -14,7 +14,7 @@ game_entity::game_entity(float positionx, float positiony, float speed, float an
 void game_entity::step(float time)
 {
     this->angle += angularVelocity * time;
-    this->travelledDistance += this->speed * time;
+    this->travelledDistance += fabs(this->speed) * time;
     this->position.x += this->speed * cos(angle) * time;
     this->position.y += this->speed * sin(angle) * time;
 }
